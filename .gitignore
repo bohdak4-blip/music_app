@@ -16,3 +16,6 @@ dist/
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# pytest cache (tests/, requirements-dev.txt)
+.pytest_cache/

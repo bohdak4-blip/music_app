@@ -1,5 +1,7 @@
 # AGENTS.md — music_app
 
+Repo: https://github.com/bohdak4-blip/music_app (public, MIT license).
+
 ## What this is
 
 A small desktop app for guitarists that combines three tools:
@@ -24,7 +26,9 @@ native window (no browser tab, no separate server process to manage).
 
 ## Stack
 
-- **Backend**: Python 3, Flask (`app.py`)
+- **Backend**: Python 3, Flask. `app.py` is a thin entry point; the
+  actual logic lives in the `backend/` package (see "Backend" below —
+  same pure-logic/HTTP-adapter split as the frontend already had).
 - **Desktop shell**: `pywebview` (`webview.create_window` + `webview.start()`)
 - **Chord detection**: `librosa` + `numpy` (chroma features + template
   matching — see below). Optional at runtime: the app still starts and the
@@ -163,11 +167,46 @@ spec has a comment block marked `ONEFILE` explaining the one-line change
   Flask returns to the tab (or the console, if you turned it on per above)
   will name the missing module/file.
 
-## Backend (`app.py`)
+## Backend (`app.py` + `backend/`)
 
-- `TUNING`: only 4 strings are modeled — string 5 = A, string 4 = D,
-  string 3 = G, string 2 = B (i.e. the middle four strings of standard
-  tuning; low E and high E are intentionally excluded from voicing search).
+**2026-09-21 refactor**: all backend logic moved out of `app.py` into a
+`backend/` package, mirroring the frontend's existing pure-data/HTTP-adapter
+split (`theory.js` vs. `app.js`/`audio-chords.js`):
+
+- `app.py` — thin entry point only. `resource_path()` (PyInstaller-aware
+  templates/static path resolution), `create_app()` (builds the Flask app
+  and registers the blueprint), and the `if __name__ == '__main__':` block
+  that opens the `pywebview` window. No music-theory or HTTP-route logic
+  lives here anymore.
+- `backend/voice_leading.py` — pure logic, no Flask import: `TUNING`,
+  `get_pitch_class()`, `generate_voicings()`, `transition_cost()`,
+  `shape_difficulty()`, and `solve_voice_leading(progression_pcs, algorithm)`
+  (the DP itself, extracted from the old `api_voice_lead` route handler so
+  it can be unit-tested without `request`/`jsonify`).
+- `backend/chord_detection.py` — pure logic, no Flask import:
+  `AUDIO_DEPS_AVAILABLE`/`AUDIO_DEPS_ERROR`, `NOTE_NAMES_AUDIO`,
+  `CHORD_QUALITY_INTERVALS`, `_build_chord_template_bank()`,
+  `detect_chords_from_audio()`.
+- `backend/routes.py` — the Flask `Blueprint` (`bp`): `/`,
+  `POST /api/voice-lead`, `POST /api/detect-chords`. Just HTTP
+  request/response glue calling into the two modules above — no music-theory
+  math here on purpose.
+
+Why: the previous single-file `app.py` mixed Flask wiring with the
+voice-leading DP and the audio DSP pipeline, which meant every logic change
+also touched route-handling code, and the logic couldn't be imported/tested
+without also importing Flask + (optionally) `librosa`/`webview`. Splitting
+it out means `backend/voice_leading.py` and `backend/chord_detection.py` can
+be imported and tested with nothing but `numpy` (see "Testing this
+project"), and `app.py` importing `webview` (only needed for the desktop
+window, not for HTTP logic) no longer gets in the way of testing the routes
+either — `tests/test_backend.py` builds its own minimal Flask app around
+`backend.routes.bp` rather than importing `app.py`.
+
+- `TUNING` (`backend/voice_leading.py`): only 4 strings are modeled — string
+  5 = A, string 4 = D, string 3 = G, string 2 = B (i.e. the middle four
+  strings of standard tuning; low E and high E are intentionally excluded
+  from voicing search).
 - `generate_voicings(target_pcs)`: brute-forces every fret combination
   0–14 on those 4 strings, keeps the ones whose pitch classes exactly match
   the target chord tones and whose fretted (non-open) notes span ≤4 frets
@@ -179,13 +218,16 @@ spec has a comment block marked `ONEFILE` explaining the one-line change
   combos, rewards barre-like shapes (few distinct frets) and having the
   chord root in the bass, penalizes a muddy (interval ≤2 semitones) bottom
   two strings.
-- `api_voice_lead` (`POST /api/voice-lead`): takes `{progression: [[pcs...], ...], algorithm}`,
-  runs a DP over all valid voicings per chord. `algorithm: 'ergonomic'`
-  weights `transition_cost * 1.5 + shape_difficulty`; `algorithm: 'strict'`
-  minimizes `transition_cost` alone (shortest physical path, ignoring
-  comfort/shape). Returns the optimal path as fret positions per string.
-- `detect_chords_from_audio(path)` + `api_detect_chords`
-  (`POST /api/detect-chords`, multipart form field `audio`): see next section.
+- `solve_voice_leading(progression_pcs, algorithm)`: runs a DP over all
+  valid voicings per chord and returns `(path, error)`. `algorithm:
+  'ergonomic'` weights `transition_cost * 1.5 + shape_difficulty`;
+  `algorithm: 'strict'` minimizes `transition_cost` alone (shortest physical
+  path, ignoring comfort/shape). `backend/routes.py`'s
+  `POST /api/voice-lead` handler just calls this and turns the result into
+  JSON (or a 400 with the error message).
+- `detect_chords_from_audio(path)` (`backend/chord_detection.py`) +
+  `POST /api/detect-chords` (`backend/routes.py`, multipart form field
+  `audio`): see next section.
 
 ### Chord detection from audio (`detect_chords_from_audio`)
 
@@ -290,8 +332,25 @@ don't feed back into the 4-slot voice-leading tool. See "Known gaps" below.
 
 ## Testing this project
 
-There's no test framework wired in (no pytest, no npm). What exists so far
-is ad hoc but real:
+**Backend now has a real automated suite** (added in the 2026-09-21
+refactor): `tests/test_backend.py`, run with `pytest`.
+
+```
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
+```
+
+It builds a minimal Flask app directly around `backend.routes.bp` (not by
+importing `app.py`, which also imports `webview` — not needed for HTTP
+tests and not always installed wherever tests run) and uses Flask's test
+client to exercise `/`, `/api/voice-lead` (both a real 4-chord progression
+and the empty-progression error case), and `/api/detect-chords` (missing
+file → graceful error, not a crash). This replaced an ad hoc smoke-test
+script used to verify the refactor and is worth extending with more cases
+(e.g. `algorithm: 'strict'`, a chord with no valid voicing on the 4
+modeled strings) rather than writing new one-off scripts.
+
+For everything else, what exists is older and more ad hoc but still real:
 
 - **JS**: `node --check <file>.js` catches syntax errors in each of the
   three script files. Because they share global scope (see above), a
@@ -308,11 +367,15 @@ is ad hoc but real:
   vectors (e.g. an exact C-major chroma vector must classify as `"C"`; a
   short glitch segment must get absorbed into its neighbor) — this doesn't
   require librosa or a real audio file, just numpy.
-- **Backend**: `python -m py_compile app.py` for a quick syntax check.
+- **Backend syntax**: `python -m py_compile app.py backend/*.py` for a
+  quick syntax check across the whole package (superseded for actual
+  behavior by the pytest suite above, but still a fast first check).
 
-If this project grows, promoting these into a real `pytest` suite (for
-`generate_voicings`/`shape_difficulty`/`api_voice_lead`'s DP and for the
-chord-detection template bank) would be the natural next step — see "Known
+The chord-detection template-bank/segment-merging math and the JS side
+still only have these ad hoc checks, not pytest — promoting the
+template-bank test into `tests/test_chord_detection.py` (numpy only, no
+librosa needed, same approach as the existing standalone script) and wiring
+up a real JS test runner would be the natural next steps — see "Known
 gaps".
 
 ## Known gaps / ideas for next session
@@ -322,9 +385,14 @@ gaps".
   minor, or their modes (e.g. no Phrygian Dominant, no Lydian Dominant).
 - Voicing search is limited to 4 strings (A–D–G–B); low E and high E never
   appear in a generated voicing.
-- No automated test suite (pytest/JS runner) — see "Testing this project".
-- No `.gitignore` at the repo root visible outside `.idea/` — `.venv/` should
-  stay untracked if this is ever put under git.
+- **Backend** has a real pytest suite now (see "Testing this project"); the
+  chord-detection template-bank math and the JS frontend still only have
+  the older ad hoc numpy/`node --check`/DOM-stub checks, not real test
+  runners.
+- Project is now on GitHub (https://github.com/bohdak4-blip/music_app,
+  public, MIT) with a proper `.gitignore` (`.venv/`, `build/`/`dist/`,
+  `__pycache__/`, `.pytest_cache/`, `.idea/`). No CI/`.github/` workflows —
+  not requested, so not added.
 - Piano view is a fixed 2-octave keyboard (no scrolling/zooming to more
   octaves) and, in chord view, shows every occurrence of a chord tone lit up
   identically rather than picking one voicing/inversion the way the guitar
