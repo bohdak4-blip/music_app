@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# PyInstaller build output (see music_app.spec)
+build/
+dist/
+
+# JetBrains IDE metadata (project-specific, not meant to be shared)
+.idea/
+
+# OS cruft
+.DS_Store
+Thumbs.db

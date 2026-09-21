@@ -1,0 +1,124 @@
+body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; box-sizing: border-box; }
+* { box-sizing: inherit; }
+h1 { margin: 10px 0 5px 0; font-size: 24px; text-align: center; color: #fff; }
+
+.chord-display { font-size: 22px; font-weight: bold; color: #FFC107; margin-bottom: 10px; height: 28px; text-align: center; }
+
+/* Вкладки */
+.tabs { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 1050px; }
+.tab-btn { flex: 1; padding: 12px; background-color: #2a2a2a; border: 1px solid #444; color: #bbb; font-weight: bold; font-size: 15px; cursor: pointer; border-radius: 8px 8px 0 0; transition: 0.2s; }
+.tab-btn.active { background-color: #E53935; color: #fff; border-color: #E53935; }
+.tab-btn:hover:not(.active) { background-color: #333; color: #fff; }
+
+/* Панелі керування */
+.tab-content { display: none; background-color: #2a2a2a; padding: 20px; border-radius: 0 0 10px 10px; width: 100%; max-width: 1050px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 20px; border: 1px solid #444; border-top: none; }
+.tab-content.active { display: block; }
+
+.controls-row { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; align-items: flex-end; margin-bottom: 15px; }
+.controls-row:last-child { margin-bottom: 0; }
+.control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 120px; }
+.control-group label { font-size: 13px; color: #bbb; }
+select, input { padding: 8px; font-size: 14px; border-radius: 6px; border: 1px solid #444; background-color: #1e1e1e; color: #fff; outline: none; }
+select:focus, input:focus { border-color: #E53935; }
+
+/* Слоти прогресії */
+.progression-slots { display: flex; gap: 10px; justify-content: space-between; background-color: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333; }
+.slot-col { display: flex; flex-direction: column; gap: 5px; flex: 1; padding: 10px; border-radius: 6px; border: 2px solid transparent; transition: all 0.2s; background-color: #2a2a2a; }
+.slot-col.active-slot { background-color: #4c1d1d; border-color: #E53935; transform: translateY(-4px); box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4); }
+.slot-col select { width: 100%; text-align: center; }
+
+.transport-controls { display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333; }
+button.action-btn { border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; color: white; }
+.btn-calc { background-color: #2196F3; }
+.btn-calc:hover { background-color: #1976D2; }
+.btn-play { background-color: #4CAF50; width: 120px; }
+.btn-play:hover { background-color: #45a049; }
+.btn-play.playing { background-color: #f44336; }
+.algo-select { background-color: #111; color: #4CAF50; font-weight: bold; border-color: #4CAF50; }
+
+/* Секції Модуляцій */
+.mod-section-title { font-size: 18px; color: #E53935; border-bottom: 2px solid #333; padding-bottom: 5px; margin-top: 30px; margin-bottom: 15px; }
+
+/* Динамічні Модуляції */
+.mod-flex-container { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+.mod-card-dynamic { background-color: #1e1e1e; border: 1px solid #444; border-left: 5px solid #2196F3; border-radius: 8px; padding: 20px; transition: 0.2s; }
+.mod-card-dynamic.recommended { border-left-color: #4CAF50; }
+.mod-card-dynamic.universal { border-left-color: #FF9800; }
+.mod-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+.mod-header h3 { margin: 0; font-size: 18px; color: #fff; }
+.badge { font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+.badge.rec { background-color: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+.badge.uni { background-color: rgba(255, 152, 0, 0.2); color: #FF9800; }
+
+/* Статичні Модуляції (Rick Beato) */
+.mod-list { display: flex; flex-direction: column; gap: 15px; }
+.mod-card { background-color: #1e1e1e; border: 1px solid #444; border-left: 5px solid #FFC107; border-radius: 8px; padding: 20px; transition: 0.2s; }
+.mod-card:hover { border-color: #FFC107; background-color: #242018; }
+.mod-keys { font-size: 13px; font-weight: bold; color: #bbb; background: #333; padding: 5px 10px; border-radius: 4px; }
+
+.mod-steps { margin: 10px 0; padding-left: 0; list-style: none; font-size: 14px; color: #ddd; line-height: 1.6; }
+.mod-steps li { margin-bottom: 10px; padding-left: 15px; border-left: 2px solid #444; }
+.mod-steps b { color: #E53935; display: inline-block; min-width: 75px; font-size: 16px; }
+.btn-load-mod { margin-top: 10px; background-color: #444; width: 100%; border: none; padding: 12px; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.btn-load-mod:hover { background-color: #E53935; }
+
+/* ГРИФ */
+.fretboard-wrapper { width: 100%; max-width: 1050px; background-color: #2a2a2a; padding: 20px; border-radius: 10px; box-shadow: 0 8px 25px rgba(0,0,0,0.8); border: 1px solid #444; }
+.fretboard-container { width: 100%; }
+.fretboard { display: flex; flex-direction: column; background-color: #3e2723; border: 3px solid #000; border-radius: 4px; width: 100%; }
+.string-row { display: flex; height: clamp(40px, 6vw, 50px); position: relative; }
+.string-line { position: absolute; top: 50%; left: 0; right: 0; background-color: #cfd8dc; transform: translateY(-50%); z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.string-row:nth-child(1) .string-line { height: 1px; }
+.string-row:nth-child(2) .string-line { height: 1.5px; }
+.string-row:nth-child(3) .string-line { height: 2px; }
+.string-row:nth-child(4) .string-line { height: 3px; }
+.string-row:nth-child(5) .string-line { height: 4px; }
+.string-row:nth-child(6) .string-line { height: 5px; }
+
+.fret { flex: 1; border-right: 2px solid #78909c; position: relative; display: flex; justify-content: center; align-items: center; }
+.fret:first-child { flex: 0.5; border-right: 8px solid #dce775; background-color: #121212; }
+.fret:last-child { border-right: none; }
+.fret-number { position: absolute; bottom: -22px; color: #aaa; font-size: 12px; width: 100%; text-align: center; font-weight: bold; }
+.dot { position: absolute; width: clamp(12px, 2.5vw, 18px); height: clamp(12px, 2.5vw, 18px); background-color: rgba(255, 255, 255, 0.25); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0; }
+
+.note { width: clamp(24px, 5vw, 34px); height: clamp(24px, 5vw, 34px); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: clamp(11px, 2.2vw, 14px); font-weight: bold; z-index: 2; position: relative; box-shadow: 0 3px 6px rgba(0,0,0,0.9); transition: all 0.15s ease; border: 1px solid rgba(255,255,255,0.2); }
+
+.note.scale-regular { background-color: #2196F3; }
+.note.scale-tonic { background-color: #E53935; }
+.note.scale-altered { background-color: #FF9800; color: black; }
+.note.chord-R { background-color: #E53935; font-size: clamp(13px, 2.5vw, 16px); border: 2px solid #fff; }
+.note.chord-3 { background-color: #4CAF50; }
+.note.chord-5 { background-color: #2196F3; }
+.note.chord-7 { background-color: #9C27B0; }
+.note.dimmed { opacity: 0.15; background-color: #333 !important; color: #777 !important; box-shadow: none; border: none; }
+
+.legend { margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; justify-content: center; background-color: #1e1e1e; padding: 12px; border-radius: 8px; width: 100%; border: 1px solid #333; }
+
+/* Таймлайн розпізнаних акордів (вкладка "Розпізнавання акордів") */
+.chord-timeline { display: flex; flex-direction: column; gap: 6px; margin-top: 15px; }
+.chord-seg { display: flex; align-items: center; gap: 15px; background-color: #1e1e1e; border: 1px solid #333; border-left: 4px solid #2196F3; border-radius: 6px; padding: 10px 15px; }
+.chord-seg-silence { border-left-color: #555; opacity: 0.6; }
+.chord-seg-time { font-family: monospace; color: #999; font-size: 13px; min-width: 100px; }
+.chord-seg-label { font-weight: bold; font-size: 16px; color: #fff; flex: 1; }
+.chord-seg-dur { font-size: 12px; color: #777; }
+
+/* Клавіатура фортепіано (альтернатива грифу гітари, вкладка "Інструмент") */
+.piano-keyboard { position: relative; width: 100%; height: 190px; background-color: #000; border: 3px solid #000; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.8); }
+.piano-white-keys { position: absolute; inset: 0; display: flex; }
+.piano-white-key { position: relative; height: 100%; background: linear-gradient(#fff, #e8e8e8); border-right: 1px solid #999; box-sizing: border-box; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; }
+.piano-white-key:last-child { border-right: none; }
+.piano-black-keys { position: absolute; inset: 0; pointer-events: none; }
+.piano-black-key { position: absolute; top: 0; height: 62%; background: linear-gradient(#333, #000); border: 1px solid #000; border-radius: 0 0 4px 4px; box-shadow: 0 3px 8px rgba(0,0,0,0.7); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; z-index: 2; box-sizing: border-box; }
+.piano-white-key .note, .piano-black-key .note { width: clamp(18px, 4vw, 28px); height: clamp(18px, 4vw, 28px); font-size: clamp(8px, 1.6vw, 11px); }
+
+@media (max-width: 600px) {
+    .piano-keyboard { height: 140px; }
+}
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-color { width: 16px; height: 16px; border-radius: 50%; }
+
+@media (max-width: 600px) {
+    .progression-slots { flex-wrap: wrap; }
+    .slot-col { min-width: 45%; }
+    .mod-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+}

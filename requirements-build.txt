@@ -1,0 +1,5 @@
+# Потрібно лише щоб зібрати .exe (pyinstaller music_app.spec).
+# Для звичайного запуску "python app.py" з вихідників ці пакети не потрібні
+# - див. requirements.txt.
+pyinstaller>=6.10
+pyinstaller-hooks-contrib>=2024.9

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Голосовеведення & Модуляції</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <h1>AI Голосовеведення & Динамічні Модуляції</h1>
+    <div class="chord-display" id="chordDisplay">Оберіть акорд</div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('prog')">Акорди та AI Голосовеведення</button>
+        <button class="tab-btn" onclick="switchTab('mod')">Асистент Модуляцій</button>
+        <button class="tab-btn" onclick="switchTab('chords')">Розпізнавання акордів (аудіо)</button>
+    </div>
+
+    <!-- Вкладка 1: Прогресії -->
+    <div id="tabProg" class="tab-content active">
+        <div class="controls-row">
+            <div class="control-group">
+                <label>Глобальна Тоніка:</label>
+                <select id="tonic">
+                    <option value="0">C</option><option value="1">C# / Db</option><option value="2">D</option>
+                    <option value="3">D# / Eb</option><option value="4">E</option><option value="5">F</option>
+                    <option value="6">F# / Gb</option><option value="7">G</option><option value="8">G# / Ab</option>
+                    <option value="9" selected>A</option><option value="10">A# / Bb</option><option value="11">B</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>База:</label>
+                <select id="baseScale">
+                    <option value="major">Мажорна</option>
+                    <option value="minor" selected>Мінорна</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Мод:</label>
+                <select id="mode"></select>
+            </div>
+            <div class="control-group">
+                <label>Перегляд грифа:</label>
+                <select id="viewMode">
+                    <option value="scale">Вся гама</option>
+                    <option value="chord" selected>Акорди (Всюди / AI Шлях)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Інструмент:</label>
+                <select id="instrumentView">
+                    <option value="guitar" selected>Гітара (гриф)</option>
+                    <option value="piano">Піаніно (клавіатура)</option>
+                </select>
+            </div>
+        </div>
+
+        <label style="font-size: 13px; color: #bbb; display: block; margin-bottom: 5px;">Слоти послідовності (відносно глобальної тоніки):</label>
+        <div class="progression-slots" id="slotsContainer"></div>
+
+        <div class="transport-controls">
+            <div class="control-group" style="flex: 1 1 200px;">
+                <label>Алгоритм AI:</label>
+                <select id="aiAlgorithm" class="algo-select">
+                    <option value="ergonomic">Баланс: Звуковедення + Зручність (CAGED)</option>
+                    <option value="strict">Суворе звуковедення (Найкоротший шлях)</option>
+                </select>
+            </div>
+            <div class="control-group" style="flex: 0 1 80px;"><label>BPM:</label><input type="number" id="bpm" value="80"></div>
+            <button class="action-btn btn-calc" onclick="calculateVoiceLeading()">🧠 Знайти AI Шлях</button>
+            <button class="action-btn btn-play" id="playBtn" onclick="togglePlayback()">▶ Грати</button>
+        </div>
+    </div>
+
+    <!-- Вкладка 2: Модуляції -->
+    <div id="tabMod" class="tab-content">
+
+        <h2 class="mod-section-title">1. Динамічний Асистент Модуляції</h2>
+        <p style="margin-top: 0; color: #ccc; font-size: 14px;">Виберіть поточну і бажану тональності. AI теорія вирахує найкращі методи переходу саме для них.</p>
+
+        <div class="controls-row" style="background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+            <div class="control-group">
+                <label style="color:#2196F3">Звідки (Поточна):</label>
+                <div style="display: flex; gap:5px;">
+                    <select id="modCurTonic" style="flex:1;">
+                        <option value="0" selected>C</option><option value="1">C#/Db</option><option value="2">D</option>
+                        <option value="3">D#/Eb</option><option value="4">E</option><option value="5">F</option>
+                        <option value="6">F#/Gb</option><option value="7">G</option><option value="8">G#/Ab</option>
+                        <option value="9">A</option><option value="10">A#/Bb</option><option value="11">B</option>
+                    </select>
+                    <select id="modCurType" style="flex:1;"><option value="maj7" selected>Мажор</option><option value="m7">Мінор</option></select>
+                </div>
+            </div>
+            <div style="font-size: 24px; color: #555; align-self: center; font-weight: bold;">➔</div>
+            <div class="control-group">
+                <label style="color:#E53935">Куди (Цільова):</label>
+                <div style="display: flex; gap:5px;">
+                    <select id="modTgtTonic" style="flex:1;">
+                        <option value="0">C</option><option value="1">C#/Db</option><option value="2">D</option>
+                        <option value="3" selected>D#/Eb</option><option value="4">E</option><option value="5">F</option>
+                        <option value="6">F#/Gb</option><option value="7">G</option><option value="8">G#/Ab</option>
+                        <option value="9">A</option><option value="10">A#/Bb</option><option value="11">B</option>
+                    </select>
+                    <select id="modTgtType" style="flex:1;"><option value="maj7">Мажор</option><option value="m7" selected>Мінор</option></select>
+                </div>
+            </div>
+            <button class="action-btn btn-calc" style="align-self: flex-end;" onclick="generateModulations()">Аналізувати</button>
+        </div>
+
+        <div class="mod-flex-container" id="modRecommendations"></div>
+
+        <h2 class="mod-section-title">2. 11 Класичних Методів (Rick Beato)</h2>
+        <p style="margin-top: 0; color: #ccc; font-size: 14px;">Натисніть на кнопку під будь-яким методом, щоб завантажити ці конкретні 4 акорди на гриф і побачити логіку їхньої побудови.</p>
+
+        <div class="mod-list">
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>1. Діатонічний спільний акорд (Diatonic Pivot)</h3>
+                    <span class="mod-keys">C Major ➔ G Major</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початкова тоніка, старт у C Major.</li>
+                    <li><b>Am7</b>: Наш "міст". У С-мажорі це 6-й ступінь, але в цільовому G-мажорі він грає роль 2-го ступеня (початок каденції II-V-I).</li>
+                    <li><b>D7</b>: Домінанта нашої бажаної наступної тоніки. Вона остаточно скасовує стару тональність і закріплює перехід.</li>
+                    <li><b>G maj7</b>: Власне нова тоніка. Модуляція завершена.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(1)">▶ Завантажити на гриф (C ➔ G)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>2. Перервана каденція (Deceptive Cadence)</h3>
+                    <span class="mod-keys">C Major ➔ A Minor</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Наш перший акорд (тоніка).</li>
+                    <li><b>G7</b>: Домінанта старої тональності. Слухач очікує, що зараз ми повернемось у С maj7.</li>
+                    <li><b>E7</b>: Раптово ми граємо домінанту до 6-го ступеня (Am) замість очікуваного розв'язання. Це ламає очікування.</li>
+                    <li><b>Am7</b>: Наша нова тоніка. Ми "перервали" мажорну каденцію і перейшли в мінор.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(2)">▶ Завантажити на гриф (C ➔ Am)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>3. Енгармонічний зменшений (Enharmonic Dim7)</h3>
+                    <span class="mod-keys">C Major ➔ Eb Minor</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початкова тоніка.</li>
+                    <li><b>Bdim7</b>: Ввідний зменшений акорд до С (ноти B-D-F-Ab). Звучить напружено і тягне назад у тоніку.</li>
+                    <li><b>Ddim7</b>: Це <i>той самий</i> акорд (D-F-Ab-Cb), оскільки dim7 симетричний. Але ми беремо іншу ноту в бас, перетворюючи його на ввідний до Eb.</li>
+                    <li><b>Ebm7</b>: Наша нова несподівана тоніка, куди логічно розв'язався змінений бас.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(3)">▶ Завантажити на гриф (C ➔ Ebm)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>4. Хроматичний півот (Secondary Dominant)</h3>
+                    <span class="mod-keys">C Major ➔ E Minor</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початкова тоніка.</li>
+                    <li><b>B7</b>: Цього акорду немає в нашій гамі, але ми вводимо його як "вторинну домінанту" до нашої цілі (Em).</li>
+                    <li><b>Em7</b>: Розв'язання. У C-мажорі це був би просто 3-й ступінь, але завдяки підготовці домінантою він звучить як нова тоніка.</li>
+                    <li><b>B7</b>: Повторюємо домінанту, щоб остаточно зафіксувати слухача в новій тональності.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(4)">▶ Завантажити на гриф (C ➔ Em)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>5. Тритонова заміна (Enharmonic Dominant)</h3>
+                    <span class="mod-keys">C Major ➔ Gb Major</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початковий акорд.</li>
+                    <li><b>G7</b>: Рідна домінанта. Головний напружений елемент тут — тритон між нотами F та B.</li>
+                    <li><b>Db7</b>: Ми знаходимо акорд, який має <i>той самий тритон</i> (F та Cb=B). Він звучить як логічне продовження, але тягне на півтону вниз.</li>
+                    <li><b>Gb maj7</b>: Нова тоніка, розташована на іншому кінці квінтового кола.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(5)">▶ Завантажити на гриф (C ➔ Gb)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>6. Зменшений у Домінанту (Dim7 to Dom7)</h3>
+                    <span class="mod-keys">C Major ➔ E Major</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початкова тоніка.</li>
+                    <li><b>Cdim7</b>: Різко змінюємо настрій, перетворюючи тоніку на однойменний зменшений акорд (С-Eb-Gb-Bbb).</li>
+                    <li><b>B7</b>: Якщо в зменшеному акорді опустити всього одну ноту (C до B), він магічним чином стає домінантою для E.</li>
+                    <li><b>E maj7</b>: Нова світла тоніка, в яку розв'язується B7.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(6)">▶ Завантажити на гриф (C ➔ E)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>7. Хроматична медіанта (Chromatic Mediant)</h3>
+                    <span class="mod-keys">C Major ➔ Ab Major</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початковий акорд.</li>
+                    <li><b>Ab maj7</b>: Стрибок на велику терцію вниз. Нота C залишається на місці (спільний тон), що робить цей різкий перехід дуже "кінематографічним".</li>
+                    <li><b>Eb7</b>: Домінанта нашої нової тональності, яка підтверджує, що Ab — це не просто випадковість.</li>
+                    <li><b>Ab maj7</b>: Закріплення нової тоніки.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(7)">▶ Завантажити на гриф (C ➔ Ab)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>8. Пряма модуляція (Direct Shift)</h3>
+                    <span class="mod-keys">C Major ➔ Db Major</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початкова тоніка.</li>
+                    <li><b>G7</b>: Домінанта старої тональності.</li>
+                    <li><b>Ab7</b>: Замість розв'язання ми брутально зсуваємо домінанту на півтону вгору (це класичний прийом поп-музики).</li>
+                    <li><b>Db maj7</b>: Нова тоніка, яка звучить на півтону вище і надає музиці нового імпульсу.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(8)">▶ Завантажити на гриф (C ➔ Db)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>9. Ланцюгова модуляція (Chain Sequence)</h3>
+                    <span class="mod-keys">Секвенція до Ab Major</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>F7</b>: Починаємо з домінанти, яка є частиною класичної секвенції II-V-I до Bb. Але ми туди не йдемо.</li>
+                    <li><b>Bbm7</b>: Ми опускаємо весь ланцюг на тон нижче. Тепер це новий II ступінь.</li>
+                    <li><b>Eb7</b>: Домінанта до нашої справжньої цілі.</li>
+                    <li><b>Ab maj7</b>: Нарешті скидаємо накопичену напругу в кінцевій тоніці.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(9)">▶ Завантажити на гриф (F7 ➔ Ab)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>10. Паралельна модуляція (Major to Minor)</h3>
+                    <span class="mod-keys">C Major ➔ C Minor</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Наш перший акорд (світлий мажор).</li>
+                    <li><b>G7</b>: Звичайна домінанта.</li>
+                    <li><b>Bdim7</b>: Ми граємо зменшений акорд, який функціонує як G7 з доданою малою ноною (b9). Ця нота готує вухо до мінору.</li>
+                    <li><b>Cm7</b>: Розв'язання в однойменну мінорну гаму. Бас той самий, але настрій повністю змінився.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(10)">▶ Завантажити на гриф (C ➔ Cm)</button>
+            </div>
+
+            <div class="mod-card">
+                <div class="mod-header">
+                    <h3>11. Спільний тон (Pivot Note)</h3>
+                    <span class="mod-keys">C Major ➔ Fm</span>
+                </div>
+                <ul class="mod-steps">
+                    <li><b>C maj7</b>: Початкова тоніка, мелодія тримає ноту До.</li>
+                    <li><b>C7</b>: Робимо з тоніки домінанту (V7 до IV ступеня). Нота До все ще головна.</li>
+                    <li><b>Db maj7</b>: Раптовий перехід у мажор від зниженого 6-го ступеня. Нота До тут є великою септимою (maj7), тому вона ідеально склеює цей стрибок.</li>
+                    <li><b>Fm7</b>: Наша нова тоніка, куди нас плавно привів цей спільний тон.</li>
+                </ul>
+                <button class="btn-load-mod" onclick="loadMod(11)">▶ Завантажити на гриф (C ➔ Fm)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладка 3: Розпізнавання акордів з аудіо -->
+    <div id="tabChords" class="tab-content">
+        <h2 class="mod-section-title">Розпізнавання акордів з аудіофайлу</h2>
+        <p style="margin-top: 0; color: #ccc; font-size: 14px;">
+            Оберіть аудіофайл (mp3, wav, m4a, flac...) з диска. Легкий локальний аналізатор
+            (хрома-ознаки + пошук найближчого шаблону акорду) розпізнає послідовність акордів
+            і покаже її як таймлайн. Це не нейромережевий розпізнавач рівня madmom/BTC, тому
+            найкраще працює на записах з чіткими, не надто щільними акордами (гітара, фортепіано).
+        </p>
+
+        <div class="controls-row" style="background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333; align-items: center;">
+            <div class="control-group" style="flex: 2 1 260px;">
+                <label>Аудіофайл:</label>
+                <input type="file" id="audioFileInput" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg">
+            </div>
+            <button class="action-btn btn-calc" id="analyzeAudioBtn" onclick="analyzeAudioFile()">🎧 Розпізнати акорди</button>
+        </div>
+
+        <p id="audioStatus" style="color:#aaa; font-size:14px; margin: 15px 0 0 0;"></p>
+        <div id="chordTimeline" class="chord-timeline"></div>
+    </div>
+
+    <!-- ГРИФ / КЛАВІАТУРА -->
+    <div class="fretboard-wrapper">
+        <div class="fretboard-container">
+            <div class="fretboard" id="fretboard"></div>
+        </div>
+        <div class="legend" id="legend"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theory.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio-chords.js') }}"></script>
+</body>
+</html>
