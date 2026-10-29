@@ -20,6 +20,12 @@ A small desktop app for guitarists that combines three tools:
    section; see `templates/index.html` around the `tabMod` section).
 4. **Chord detection from audio** — upload a local audio file and get back a
    read-only timeline of the chords a lightweight local analyzer heard in it.
+5. **Ear training (game)** — a 4th tab with three exercise types (chord
+   quality, chord function/Roman-numeral in a key, and chord-progression
+   recognition), each with its own level ladder that unlocks as accuracy
+   improves, multiple-choice answers, and mood-based (not music-theory-
+   jargon) hints. See "Ear Training" under Frontend below for the full
+   design writeup.
 
 It's a Python desktop app: Flask serves the UI, `pywebview` wraps it in a
 native window (no browser tab, no separate server process to manage).
@@ -35,14 +41,20 @@ native window (no browser tab, no separate server process to manage).
   other two tabs work fine if these aren't installed; only the detection tab
   reports an error.
 - **Frontend**: `templates/index.html` (markup only) + `static/css/style.css`
-  + three plain (non-module) `<script src>` files loaded in this order:
-  `static/js/theory.js` → `static/js/app.js` → `static/js/audio-chords.js`.
+  + seven plain (non-module) `<script src>` files loaded in this order:
+  `theory.js` → `app.js` → `audio-chords.js` → `audio-engine.js` →
+  `ear-training-data.js` → `ear-training-logic.js` → `ear-training.js`.
   No build step, no framework. UI text is in Ukrainian.
 
-### Why three separate script files, and why plain scripts (not ES modules)
+### Why separate script files, and why plain scripts (not ES modules)
 
 They were originally one big inline `<script>` block; they got split out so
-the HTML file holds markup only. The split follows what each file *is*:
+the HTML file holds markup only, and every feature added since (chord
+detection, then Ear Training) kept the same pattern rather than growing one
+of the existing files. The split follows what each file *is* — this list
+covers tabs 1-3; Ear Training's four files are documented separately below
+under "Ear Training" since there are enough of them to deserve their own
+explanation:
 
 - `static/js/theory.js` — pure music-theory data and pure functions. No DOM
   access. `modesData`, `referenceMode`, `getAlteredIndices()`,
@@ -61,11 +73,22 @@ the HTML file holds markup only. The split follows what each file *is*:
 They're loaded as plain `<script src>` tags (not `type="module"`) *on
 purpose*: classic scripts on one page share a single top-level lexical scope,
 so a top-level `const`/`function` in `theory.js` is directly visible in
-`app.js` and `audio-chords.js` with zero imports/exports — this preserves the
-exact behavior of the original single inline script. Load order matters
-(theory → app → audio-chords) since later files reference earlier ones;
-switching any of them to ES modules would break this implicit sharing and
-require explicit `import`/`export`.
+`app.js` and `audio-chords.js` (and later, `ear-training.js`) with zero
+imports/exports — this preserves the exact behavior of the original single
+inline script. Load order matters (theory → app → audio-chords →
+audio-engine → ear-training-data → ear-training-logic → ear-training) since
+later files reference earlier ones; switching any of them to ES modules
+would break this implicit sharing and require explicit `import`/`export`.
+
+One gotcha specific to this pattern, discovered while testing Ear Training
+(see "Testing this project"): top-level `let`/`const` in a classic script do
+**not** become properties of the global object (`window` in a browser, the
+context object in this project's Node `vm`-based tests) — only `var` and
+function declarations do. `ear-training.js`'s module-level mutable state
+(`earStats`, `earCurrentQuestion`, etc.) is therefore declared with `var`,
+not `let`, specifically so it stays inspectable both from the browser
+console and from the hand-rolled Node tests. Worth remembering if a future
+file's state needs to be debuggable/testable the same way.
 
 ## Running it
 
@@ -267,8 +290,9 @@ section below for how to re-run that style of check.
 
 ### `templates/index.html`
 
-Markup only, three tabs (`tabProg`, `tabMod`, `tabChords`) plus the shared
-fretboard/legend at the bottom. Static assets referenced via
+Markup only, four tabs (`tabProg`, `tabMod`, `tabChords`, `tabEar`) plus the
+shared fretboard/legend at the bottom (not used by the Ear Training tab,
+which doesn't show an instrument). Static assets referenced via
 `{{ url_for('static', filename='...') }}`.
 
 ### `static/js/theory.js` (pure data/model — see the "why three files" note above)
@@ -330,6 +354,82 @@ fretboard/legend at the bottom. Static assets referenced via
 This tab is intentionally **read-only in this version** — detected chords
 don't feed back into the 4-slot voice-leading tool. See "Known gaps" below.
 
+### Ear Training (tab 4): `audio-engine.js`, `ear-training-data.js`, `ear-training-logic.js`, `ear-training.js`
+
+Added 2026-09-21, in response to the user wanting a Hooktheory-style ear
+trainer but "more like a game": multiple-choice answers, levels that unlock
+as accuracy improves, and mood-based hints instead of jargon (e.g. "sadly
+happy, dreamy — a lo-fi-playlist-at-2am chord" for maj7, rather than "major
+third + perfect fifth + major seventh"). Four files, split the same way the
+backend now is (`backend/voice_leading.py`+`chord_detection.py` = pure logic,
+`backend/routes.py` = thin adapter) — this is the JS-side version of that
+same split, carried one step further than tabs 1-3 ever needed:
+
+- `static/js/audio-engine.js` — pure Web Audio API wrapper, no music theory,
+  no DOM beyond `window.AudioContext`. `earPcToFrequency(pc, octave)`
+  (pitch-class → Hz, standard A4=440 tuning), `earPlayTone()` (one
+  oscillator + a short attack/decay gain envelope, to avoid clicks),
+  `earPlayChord()` (several tones at once), `earPlaySequence()` (chords
+  back-to-back, used for cadences/progressions). A single `AudioContext` is
+  created lazily on first use — not at page load — because browsers refuse
+  to start audio before a user gesture, and the first real call to this
+  module happens from `earInitIfNeeded()`, itself only triggered by the
+  user clicking the "Тренування слуху" tab button.
+- `static/js/ear-training-data.js` — pure vocabulary, no functions beyond
+  trivial lookups: `EAR_CHORD_QUALITIES` (9 qualities: maj/min/dim/aug +
+  dom7/maj7/m7/dim7/m7b5, each with a Ukrainian label and a hint string),
+  `EAR_FUNCTION_DEGREES` (diatonic triads for major/Ionian and natural
+  minor/Aeolian only — deliberately *not* all 7 modes the rest of the app
+  supports, since Roman-numeral names like ii/vi/vii° only mean what people
+  expect relative to plain major/minor), `EAR_QUALITY_LEVEL_TIERS` /
+  `EAR_FUNCTION_LEVEL_TIERS` (cumulative difficulty tiers, see below), and
+  `EAR_PROGRESSION_TIERS` (a hand-picked pool of named 4-chord progressions
+  — e.g. I-V-vi-IV, i-VI-III-VII — each with a hint about where it's famous
+  from). Self-contained: does not read `modesData`/`customChordTypes` from
+  `theory.js`, so this feature's correctness never depends on the exact
+  shape of the fretboard-viewer's data.
+- `static/js/ear-training-logic.js` — pure game logic: **no DOM, no Web
+  Audio, no localStorage**, which means (unlike every other JS file in this
+  project) it needs no DOM stub at all to test — plain `node` in a `vm`
+  context is enough. `earGenerateQuestion(exerciseType, levelIndex, rng)`
+  (dispatches to one of three generators, one per exercise type — `rng` is
+  injectable so tests are deterministic, defaults to `Math.random`),
+  `earCheckAnswer()`, and the level-unlock reducer `earApplyAnswerToStats()`
+  (pure — takes stats + one answer, returns new stats, never mutates).
+  Levels are **cumulative tiers**: level N's question pool is tiers
+  `0..N` concatenated, so going up a level only ever *adds* options, never
+  replaces them. Unlock rule: a rolling window of the last 10 answers *at
+  the current level* needs ≥8 attempts and ≥75% accuracy to advance; the
+  window resets on level-up, so the next level is judged on its own fresh
+  attempts, not carried-over momentum from the easier one. The "Функція
+  акорду" exercise has one extra level beyond its two data tiers: past
+  that point, major and minor keys are both fully unlocked and the
+  generator picks one at random per question instead of adding a 4th tier.
+- `static/js/ear-training.js` — the DOM controller: builds the per-question
+  multiple-choice buttons, wires the exercise-type switcher/hint/replay
+  buttons, shows correct/incorrect feedback and a short delay before
+  auto-advancing to the next question, and persists progress. Module-level
+  state (`earStats`, `earCurrentQuestion`, etc.) is declared with `var`, not
+  `let` — see the note in "Why separate script files" above for why that
+  specific choice matters here.
+
+**Why progress is saved to `localStorage` and not a new Flask endpoint**:
+this is a native `pywebview` app with a persistent WebView2 profile, not an
+ephemeral preview frame — `localStorage` here behaves like it would in any
+real browser and survives app restarts. Adding a `/api/ear-training/stats`
+endpoint plus a JSON file on disk would only be worth the extra complexity
+if progress needed to sync across machines or survive a profile reset;
+revisit this if either of those ever becomes a real ask. Stored under the
+key `musicApp.earTraining.v1` (versioned so a future shape change can
+migrate or reset cleanly instead of crashing on old saved data) as
+`{ quality: {level, history}, function: {...}, progression: {...} }`.
+
+**Why multiple-choice and not typed/clicked-on-instrument answers**: this
+was an explicit choice made with the user up front (along with which three
+exercise types to build first, and that levels + hints — not score/streak/
+timer/lives — are what should make it feel like a game for v1) — see
+"Known gaps" for what was deliberately deferred.
+
 ## Testing this project
 
 **Backend now has a real automated suite** (added in the 2026-09-21
@@ -350,17 +450,34 @@ script used to verify the refactor and is worth extending with more cases
 (e.g. `algorithm: 'strict'`, a chord with no valid voicing on the 4
 modeled strings) rather than writing new one-off scripts.
 
+**Ear Training's pure logic has its own dependency-free test**, same spirit
+as the chord-detection template-bank check below but for `ear-training-logic.js`:
+load `ear-training-data.js` + `ear-training-logic.js` into a plain Node `vm`
+context (no DOM stub needed at all, since that file touches neither DOM nor
+Web Audio) and assert on question generation with a seeded/injected `rng`
+(e.g. level 0 of the "quality" exercise must offer exactly `[maj, min]` as
+choices) and on the level-unlock reducer (8 correct in a row unlocks; a
+50%-accuracy run of 20 answers never does; level never exceeds the type's
+max).
+
 For everything else, what exists is older and more ad hoc but still real:
 
-- **JS**: `node --check <file>.js` catches syntax errors in each of the
-  three script files. Because they share global scope (see above), a
-  meaningful smoke test needs to run all three in one `vm` context with a
-  hand-rolled DOM stub (no `jsdom` available in this environment — no
-  network egress to npm) — see the session history for the pattern:
-  fake `document.getElementById`/`createElement` with a minimal
-  `classList`, override `fetch`, `vm.runInContext` each file in order, then
-  call `render()`/`switchTab()`/`analyzeAudioFile()` and assert on the fake
-  DOM tree it built.
+- **JS**: `node --check <file>.js` catches syntax errors in each script
+  file. Because they share global scope (see above), a meaningful smoke
+  test needs to run all seven in one `vm` context with a hand-rolled DOM
+  stub (no `jsdom` available in this environment — no network egress to
+  npm) — see the session history for the pattern: fake
+  `document.getElementById`/`createElement` with a minimal `classList`,
+  override `fetch`, add stubs for `localStorage` and `window.AudioContext`
+  (needed once Ear Training's files are in the mix), `vm.runInContext` each
+  file in order, then call `render()`/`switchTab()`/`analyzeAudioFile()`/
+  `earSubmitAnswer()` and assert on the fake DOM tree it built. Two stub
+  gotchas worth remembering if this breaks again: a real `<select>`
+  auto-selects whichever `<option>` has `selected`, and the stub has no such
+  linkage unless `appendChild` is taught to copy an appended selected
+  option's value onto its parent; and `document.querySelectorAll('.foo')`
+  needs the stub elements to actually carry that class up front (matching
+  the real HTML's `class="..."` attributes) or it silently finds nothing.
 - **Chord-detection math**: the template-bank + segment-merging logic in
   `detect_chords_from_audio` was verified with a standalone numpy script
   that copies those two pieces verbatim and feeds them synthetic chroma
@@ -370,6 +487,11 @@ For everything else, what exists is older and more ad hoc but still real:
 - **Backend syntax**: `python -m py_compile app.py backend/*.py` for a
   quick syntax check across the whole package (superseded for actual
   behavior by the pytest suite above, but still a fast first check).
+
+Ear Training's logic layer is the one piece of frontend code in this
+project that *is* pytest-suite-equivalent in rigor (deterministic,
+dependency-free, runs in milliseconds) — everything else JS-side still
+relies on the DOM-stub style described above.
 
 The chord-detection template-bank/segment-merging math and the JS side
 still only have these ad hoc checks, not pytest — promoting the
@@ -419,3 +541,19 @@ gaps".
     tools, Cython, pinned old numpy) and Essentia has no real Windows
     distribution; template matching was chosen specifically because
     `pip install librosa` just works.
+- **Ear Training** (new 2026-09-21): only 3 of 4 discussed exercise types
+  made it into v1 — chord quality, chord function, and progression
+  recognition. **Interval recognition was explicitly deferred**, not
+  forgotten. Also deferred by explicit choice: a visible score/combo
+  counter, a speed/timer bonus, and a lives/mistakes-limit mode — the user
+  picked "levels + hints" as what should make this feel like a game for v1,
+  not those three. Progress lives only in `localStorage` (see "Ear Training"
+  under Frontend) — it's tied to this one machine's WebView2 profile, not
+  backed up or synced; fine for a single-user desktop app, but worth a
+  backend-saved option if that ever matters. Hints are static (one fixed
+  hint per quality/degree/progression) rather than progressively revealed or
+  randomly varied among several options per item — the data model
+  (`hints: [...]`) already supports more than one per entry, so adding
+  variety later is just adding array entries, no code change. The chord
+  quality/function exercises only ever play root-position triads/7ths in one
+  fixed octave — no inversions, no spread voicings, no rhythm variation.

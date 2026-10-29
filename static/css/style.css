@@ -122,3 +122,38 @@ button.action-btn { border: none; padding: 10px 20px; font-size: 15px; font-weig
     .slot-col { min-width: 45%; }
     .mod-header { flex-direction: column; align-items: flex-start; gap: 10px; }
 }
+
+/* Тренування слуху (вкладка "Тренування слуху") */
+.ear-type-switch { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+.ear-type-btn { flex: 1; min-width: 140px; padding: 10px; background-color: #1e1e1e; border: 1px solid #444; color: #bbb; font-weight: bold; font-size: 14px; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+.ear-type-btn.active { background-color: #9C27B0; color: #fff; border-color: #9C27B0; }
+.ear-type-btn:hover:not(.active) { background-color: #2a2a2a; color: #fff; }
+
+.ear-status-row { display: flex; align-items: center; gap: 15px; background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 12px 15px; margin-bottom: 15px; flex-wrap: wrap; }
+.ear-level-badge { font-weight: bold; color: #FFC107; font-size: 15px; white-space: nowrap; }
+.ear-progress-bar { flex: 1; min-width: 120px; height: 10px; background-color: #333; border-radius: 5px; overflow: hidden; }
+.ear-progress-fill { height: 100%; background-color: #4CAF50; width: 0%; transition: width 0.3s ease; }
+.ear-accuracy { font-size: 13px; color: #aaa; white-space: nowrap; }
+
+.ear-play-area { display: flex; gap: 15px; justify-content: center; margin-bottom: 10px; }
+.btn-ear-play { background-color: #2196F3; }
+.btn-ear-play:hover { background-color: #1976D2; }
+.btn-ear-hint { background-color: #555; }
+.btn-ear-hint:hover { background-color: #666; }
+
+.ear-hint-text { text-align: center; color: #FFC107; font-size: 14px; font-style: italic; background-color: #1e1e1e; border: 1px dashed #FFC107; border-radius: 6px; padding: 10px 15px; margin: 10px 0; }
+
+.ear-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 15px 0; }
+.ear-choice-btn { padding: 14px 10px; font-size: 15px; font-weight: bold; border-radius: 8px; border: 2px solid #444; background-color: #1e1e1e; color: #fff; cursor: pointer; transition: 0.15s; }
+.ear-choice-btn:hover:not(:disabled) { border-color: #9C27B0; background-color: #2a1e2c; }
+.ear-choice-btn:disabled { cursor: default; }
+.ear-choice-btn.ear-choice-correct { background-color: #1b5e20; border-color: #4CAF50; color: #fff; }
+.ear-choice-btn.ear-choice-wrong { background-color: #5c1a1a; border-color: #E53935; color: #fff; }
+
+.ear-feedback { text-align: center; font-size: 16px; font-weight: bold; min-height: 24px; margin: 10px 0 0 0; }
+.ear-feedback-correct { color: #4CAF50; }
+.ear-feedback-wrong { color: #E53935; }
+
+@media (max-width: 600px) {
+    .ear-type-btn { min-width: 100%; }
+}

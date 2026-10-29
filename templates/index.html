@@ -15,6 +15,7 @@
         <button class="tab-btn active" onclick="switchTab('prog')">Акорди та AI Голосовеведення</button>
         <button class="tab-btn" onclick="switchTab('mod')">Асистент Модуляцій</button>
         <button class="tab-btn" onclick="switchTab('chords')">Розпізнавання акордів (аудіо)</button>
+        <button class="tab-btn" onclick="switchTab('ear')">Тренування слуху</button>
     </div>
 
     <!-- Вкладка 1: Прогресії -->
@@ -293,6 +294,40 @@
         <div id="chordTimeline" class="chord-timeline"></div>
     </div>
 
+    <!-- Вкладка 4: Тренування слуху -->
+    <div id="tabEar" class="tab-content">
+        <h2 class="mod-section-title">Тренування слуху</h2>
+        <p style="margin-top: 0; color: #ccc; font-size: 14px;">
+            Слухайте і вгадуйте: тип акорду, його функцію в тональності, або цілу прогресію.
+            Рівні відкриваються поступово — складніші варіанти з'являються, коли точність на
+            поточному рівні стабільно висока. Якщо не впізнали на слух — є підказка (не "правильна
+            відповідь", а радше відчуття: на що це схоже).
+        </p>
+
+        <div class="ear-type-switch" id="earTypeSwitch">
+            <button class="ear-type-btn active" data-type="quality">Тип акорду</button>
+            <button class="ear-type-btn" data-type="function">Функція акорду</button>
+            <button class="ear-type-btn" data-type="progression">Послідовність</button>
+        </div>
+
+        <div class="ear-status-row">
+            <div class="ear-level-badge" id="earLevelBadge">Рівень 1 / 4</div>
+            <div class="ear-progress-bar"><div class="ear-progress-fill" id="earProgressFill"></div></div>
+            <div class="ear-accuracy" id="earAccuracyText">0/0</div>
+        </div>
+
+        <div class="ear-play-area">
+            <button class="action-btn btn-ear-play" id="earPlayBtn">▶ Грати знову</button>
+            <button class="action-btn btn-ear-hint" id="earHintBtn">💡 Підказка</button>
+        </div>
+
+        <p class="ear-hint-text" id="earHintText" style="display:none;"></p>
+
+        <div class="ear-choices" id="earChoices"></div>
+
+        <p class="ear-feedback" id="earFeedback"></p>
+    </div>
+
     <!-- ГРИФ / КЛАВІАТУРА -->
     <div class="fretboard-wrapper">
         <div class="fretboard-container">
@@ -304,5 +339,9 @@
     <script src="{{ url_for('static', filename='js/theory.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio-chords.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio-engine.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ear-training-data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ear-training-logic.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ear-training.js') }}"></script>
 </body>
 </html>

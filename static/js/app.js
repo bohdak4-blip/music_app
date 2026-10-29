@@ -16,7 +16,8 @@ let columns = [], degreeSlots = [], typeSlots = [];
 const TAB_DEFS = {
     prog:   { btnIndex: 1, panelId: 'tabProg' },
     mod:    { btnIndex: 2, panelId: 'tabMod' },
-    chords: { btnIndex: 3, panelId: 'tabChords' }
+    chords: { btnIndex: 3, panelId: 'tabChords' },
+    ear:    { btnIndex: 4, panelId: 'tabEar' }
 };
 
 function switchTab(tabId) {
@@ -26,6 +27,10 @@ function switchTab(tabId) {
     document.querySelector(`.tab-btn:nth-child(${def.btnIndex})`).classList.add('active');
     document.getElementById(def.panelId).classList.add('active');
     if (tabId === 'mod') generateModulations();
+    // earInitIfNeeded живе в ear-training.js (завантажується після app.js) -
+    // перевірка typeof, а не пряме ім'я, про всяк випадок захищає від
+    // помилки завантаження, якщо колись порядок скриптів зламають.
+    if (tabId === 'ear' && typeof earInitIfNeeded === 'function') earInitIfNeeded();
 }
 
 function initSlots() {
