@@ -89,6 +89,31 @@ function earPlayChord(pcs, options) {
 
 // Грає послідовність акордів один за одним (каденція або прогресія).
 // Повертає сумарну тривалість (с), щоб виклик міг запланувати щось "після".
+// Мелодичний прогін гами (на відміну від earPlayChord/earPlaySequence, що
+// грають ноти одночасно): ноти звучать одна за одною, з правильним
+// переходом між октавами (root+interval може перевищити 11 - тоді нота
+// справді вища, а не "той самий pc в тій самій октаві"). Завершується
+// тонікою на октаву вище, щоб було чутно, що гама "замкнулася".
+function earPlayScale(root, intervals, options) {
+    options = options || {};
+    const baseOctave = options.octave != null ? options.octave : 4;
+    const noteDuration = options.noteDuration != null ? options.noteDuration : 0.32;
+    const gap = options.gap != null ? options.gap : 0.03;
+    const startDelay = options.delay != null ? options.delay : 0;
+    const ctx = earAudioGetContext();
+    const baseTime = ctx.currentTime + startDelay;
+    const steps = intervals.concat([12]); // +тоніка зверху, замикає октаву
+    let t = 0;
+    steps.forEach(iv => {
+        const sum = root + iv;
+        const pc = sum % 12;
+        const octave = baseOctave + Math.floor(sum / 12);
+        earPlayTone(earPcToFrequency(pc, octave), baseTime + t, noteDuration);
+        t += noteDuration + gap;
+    });
+    return startDelay + t;
+}
+
 function earPlaySequence(chordsPcsArray, options) {
     options = options || {};
     const octave = options.octave != null ? options.octave : 4;

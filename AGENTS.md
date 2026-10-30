@@ -20,12 +20,13 @@ A small desktop app for guitarists that combines three tools:
    section; see `templates/index.html` around the `tabMod` section).
 4. **Chord detection from audio** — upload a local audio file and get back a
    read-only timeline of the chords a lightweight local analyzer heard in it.
-5. **Ear training (game)** — a 4th tab with three exercise types (chord
-   quality, chord function/Roman-numeral in a key, and chord-progression
-   recognition), each with its own level ladder that unlocks as accuracy
-   improves, multiple-choice answers, and mood-based (not music-theory-
-   jargon) hints. See "Ear Training" under Frontend below for the full
-   design writeup.
+5. **Ear training (game)** — a 4th tab with four exercise types (chord
+   quality, chord function/Roman-numeral in a key, chord-progression
+   recognition, and — added 2026-10-30 — mode/scale-by-ear recognition
+   across all 7 modes the scale viewer supports), each with its own level
+   ladder that unlocks as accuracy improves, multiple-choice answers, and
+   mood-based (not music-theory-jargon) hints. See "Ear Training" under
+   Frontend below for the full design writeup.
 
 It's a Python desktop app: Flask serves the UI, `pywebview` wraps it in a
 native window (no browser tab, no separate server process to manage).
@@ -370,29 +371,41 @@ same split, carried one step further than tabs 1-3 ever needed:
   (pitch-class → Hz, standard A4=440 tuning), `earPlayTone()` (one
   oscillator + a short attack/decay gain envelope, to avoid clicks),
   `earPlayChord()` (several tones at once), `earPlaySequence()` (chords
-  back-to-back, used for cadences/progressions). A single `AudioContext` is
-  created lazily on first use — not at page load — because browsers refuse
-  to start audio before a user gesture, and the first real call to this
-  module happens from `earInitIfNeeded()`, itself only triggered by the
-  user clicking the "Тренування слуху" tab button.
+  back-to-back, used for cadences/progressions), and — added 2026-10-30 for
+  the "Лад (гама)" exercise — `earPlayScale(root, intervals, options)`
+  (plays notes one at a time rather than together; unlike the chord
+  helpers, it has to track actual octave crossings — `root + interval` can
+  exceed 11, which means a genuinely higher pitch, not just a different
+  pitch class in the same octave — and appends the tonic an octave up at
+  the end so the run audibly "closes"). A single `AudioContext` is created
+  lazily on first use — not at page load — because browsers refuse to start
+  audio before a user gesture, and the first real call to this module
+  happens from `earInitIfNeeded()`, itself only triggered by the user
+  clicking the "Тренування слуху" tab button.
 - `static/js/ear-training-data.js` — pure vocabulary, no functions beyond
   trivial lookups: `EAR_CHORD_QUALITIES` (9 qualities: maj/min/dim/aug +
   dom7/maj7/m7/dim7/m7b5, each with a Ukrainian label and a hint string),
   `EAR_FUNCTION_DEGREES` (diatonic triads for major/Ionian and natural
   minor/Aeolian only — deliberately *not* all 7 modes the rest of the app
   supports, since Roman-numeral names like ii/vi/vii° only mean what people
-  expect relative to plain major/minor), `EAR_QUALITY_LEVEL_TIERS` /
-  `EAR_FUNCTION_LEVEL_TIERS` (cumulative difficulty tiers, see below), and
-  `EAR_PROGRESSION_TIERS` (a hand-picked pool of named 4-chord progressions
-  — e.g. I-V-vi-IV, i-VI-III-VII — each with a hint about where it's famous
-  from). Self-contained: does not read `modesData`/`customChordTypes` from
-  `theory.js`, so this feature's correctness never depends on the exact
-  shape of the fretboard-viewer's data.
+  expect relative to plain major/minor), `EAR_SCALES` (added 2026-10-30 —
+  all 7 modes the scale viewer supports, each with a mood-based hint, e.g.
+  Lydian's raised 4th described as "fairy-tale, slightly levitating" and
+  Locrian — the one mode with no stable tonic feel — as "the shakiest mode
+  of all, like the ground giving way"), `EAR_QUALITY_LEVEL_TIERS` /
+  `EAR_FUNCTION_LEVEL_TIERS` / `EAR_SCALE_LEVEL_TIERS` (cumulative
+  difficulty tiers, see below), and `EAR_PROGRESSION_TIERS` (a hand-picked
+  pool of named 4-chord progressions — e.g. I-V-vi-IV, i-VI-III-VII — each
+  with a hint about where it's famous from). Self-contained: does not read
+  `modesData`/`customChordTypes` from `theory.js` (the 7 mode
+  `intervals` are deliberately re-declared here, same as elsewhere in this
+  file), so this feature's correctness never depends on the exact shape of
+  the fretboard-viewer's data.
 - `static/js/ear-training-logic.js` — pure game logic: **no DOM, no Web
   Audio, no localStorage**, which means (unlike every other JS file in this
   project) it needs no DOM stub at all to test — plain `node` in a `vm`
   context is enough. `earGenerateQuestion(exerciseType, levelIndex, rng)`
-  (dispatches to one of three generators, one per exercise type — `rng` is
+  (dispatches to one of four generators, one per exercise type — `rng` is
   injectable so tests are deterministic, defaults to `Math.random`),
   `earCheckAnswer()`, and the level-unlock reducer `earApplyAnswerToStats()`
   (pure — takes stats + one answer, returns new stats, never mutates).
@@ -405,6 +418,11 @@ same split, carried one step further than tabs 1-3 ever needed:
   акорду" exercise has one extra level beyond its two data tiers: past
   that point, major and minor keys are both fully unlocked and the
   generator picks one at random per question instead of adding a 4th tier.
+  `earGenerateScaleQuestion()` returns only `root` + `modeId` (not pitch
+  classes) — unlike the other three generators, the controller/audio layer
+  looks up the mode's `intervals` from `EAR_SCALES` itself when playing,
+  since turning a mode into an actual ascending run (with real octave
+  crossings) is an audio-rendering concern, not game logic.
 - `static/js/ear-training.js` — the DOM controller: builds the per-question
   multiple-choice buttons, wires the exercise-type switcher/hint/replay
   buttons, shows correct/incorrect feedback and a short delay before
@@ -541,10 +559,14 @@ gaps".
     tools, Cython, pinned old numpy) and Essentia has no real Windows
     distribution; template matching was chosen specifically because
     `pip install librosa` just works.
-- **Ear Training** (new 2026-09-21): only 3 of 4 discussed exercise types
-  made it into v1 — chord quality, chord function, and progression
-  recognition. **Interval recognition was explicitly deferred**, not
-  forgotten. Also deferred by explicit choice: a visible score/combo
+- **Ear Training** (new 2026-09-21, extended 2026-10-30 with a 4th exercise
+  type): v1 shipped 3 of 4 originally discussed types — chord quality,
+  chord function, and progression recognition. **Interval recognition was
+  explicitly deferred**, not forgotten — it's still missing. Mode/scale-by-
+  ear recognition (`EAR_SCALES`, all 7 modes) was added afterward as a
+  separate 4th type; it's a different exercise from interval recognition
+  (identifying a 7-note mode by ear vs. a single two-note distance), so
+  adding it doesn't close that gap. Also deferred by explicit choice: a visible score/combo
   counter, a speed/timer bonus, and a lives/mistakes-limit mode — the user
   picked "levels + hints" as what should make this feel like a game for v1,
   not those three. Progress lives only in `localStorage` (see "Ear Training"

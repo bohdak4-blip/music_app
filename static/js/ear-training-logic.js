@@ -57,6 +57,7 @@ function earGetMaxLevel(exerciseType) {
     if (exerciseType === "quality") return EAR_QUALITY_LEVEL_TIERS.length - 1;
     if (exerciseType === "function") return EAR_FUNCTION_LEVEL_TIERS.major.length; // +1 рівень "змішування" ладів
     if (exerciseType === "progression") return EAR_PROGRESSION_TIERS.length - 1;
+    if (exerciseType === "scale") return EAR_SCALE_LEVEL_TIERS.length - 1;
     throw new Error("Невідомий тип вправи: " + exerciseType);
 }
 
@@ -178,10 +179,36 @@ function earGenerateProgressionQuestion(levelIndex, rng) {
     };
 }
 
+// --- Вправа 4: Лад (гама) ---------------------------------------------------
+// На відміну від попередніх трьох вправ, тут немає "pcs" одного акорду -
+// контролер (ear-training.js) сам будує мелодичний прогін гами через
+// audio-engine.js::earPlayScale(root, intervals, ...), використовуючи
+// root + EAR_SCALES-запис за modeId. Тут лишається лише чиста музична
+// теорія: який лад, з якої тоніки, і варіанти відповіді.
+function earGenerateScaleQuestion(levelIndex, rng) {
+    rng = rng || Math.random;
+    const pool = earCumulativeTierPool(EAR_SCALE_LEVEL_TIERS, levelIndex);
+    const root = Math.floor(rng() * 12);
+    const modeId = earPickRandomItem(pool, rng);
+    const modeDef = EAR_SCALES.find(m => m.id === modeId);
+    const choices = earShuffle(pool, rng);
+    const correctIndex = choices.indexOf(modeId);
+    return {
+        type: "scale",
+        levelIndex,
+        root,
+        modeId,
+        choices,
+        correctIndex,
+        hint: earPickHint(modeDef.hints, rng)
+    };
+}
+
 function earGenerateQuestion(exerciseType, levelIndex, rng) {
     if (exerciseType === "quality") return earGenerateQualityQuestion(levelIndex, rng);
     if (exerciseType === "function") return earGenerateFunctionQuestion(levelIndex, rng);
     if (exerciseType === "progression") return earGenerateProgressionQuestion(levelIndex, rng);
+    if (exerciseType === "scale") return earGenerateScaleQuestion(levelIndex, rng);
     throw new Error("Невідомий тип вправи: " + exerciseType);
 }
 
@@ -194,7 +221,8 @@ function earCreateDefaultStats() {
     return {
         quality: { level: 0, history: [] },
         function: { level: 0, history: [] },
-        progression: { level: 0, history: [] }
+        progression: { level: 0, history: [] },
+        scale: { level: 0, history: [] }
     };
 }
 

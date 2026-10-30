@@ -88,6 +88,7 @@ function earChoiceLabel(question, choice) {
     if (question.type === "quality") return EAR_CHORD_QUALITIES.find(q => q.id === choice).label;
     if (question.type === "function") return EAR_FUNCTION_DEGREES[question.baseScale][choice].roman;
     if (question.type === "progression") return choice.label;
+    if (question.type === "scale") return EAR_SCALES.find(m => m.id === choice).label;
     return String(choice);
 }
 
@@ -114,6 +115,9 @@ function earPlayCurrentQuestion() {
         earPlayChord(q.pcs, { duration: 1.6, delay: afterCadence + 0.3 });
     } else if (q.type === "progression") {
         earPlaySequence(q.pcsSequence, { chordDuration: 0.85, gap: 0.12 });
+    } else if (q.type === "scale") {
+        const modeDef = EAR_SCALES.find(m => m.id === q.modeId);
+        earPlayScale(q.root, modeDef.intervals, { noteDuration: 0.32 });
     }
 }
 
