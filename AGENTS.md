@@ -28,8 +28,12 @@ A small desktop app for guitarists that combines three tools:
    mood-based (not music-theory-jargon) hints. See "Ear Training" under
    Frontend below for the full design writeup.
 
-It's a Python desktop app: Flask serves the UI, `pywebview` wraps it in a
-native window (no browser tab, no separate server process to manage).
+It's primarily a Python desktop app: Flask serves the UI, `pywebview` wraps
+it in a native window (no browser tab, no separate server process to
+manage). It can **also** run as a plain web app on the home Wi-Fi network
+(`serve_lan.py` — see "Running on your phone" below) so it's reachable from
+a phone browser and installable to the Home Screen as a PWA-ish icon — the
+same Flask app and templates either way, just a different entry point.
 
 ## Stack
 
@@ -190,6 +194,84 @@ spec has a comment block marked `ONEFILE` explaining the one-line change
   is missing a file that `collect_all()` didn't catch — the error message
   Flask returns to the tab (or the console, if you turned it on per above)
   will name the missing module/file.
+
+## Running on your phone (LAN web app / "Add to Home Screen")
+
+Added 2026-11-03, after the user asked to turn this into "an app" and
+clarified (via two scoped-up-front questions, since a real iOS app and a
+web-app-on-Home-Screen are completely different amounts of work) that they
+wanted: a web app added to the iPhone Home Screen (not a real App Store/
+sideloaded app — that needs a Mac with Xcode plus usually a $99/yr Apple
+Developer account, which doesn't exist here and wasn't worth it for a
+personal tool), reachable only over home Wi-Fi with this PC running it (not
+hosted online somewhere) — so no new infrastructure, no public exposure,
+just this LAN made reachable from a phone browser.
+
+**`serve_lan.py`** (new, project root) — runs the *exact same* Flask `app`
+object `app.py` already builds (`from app import app as flask_app`), just
+without the `pywebview` window and bound to `0.0.0.0` instead of localhost,
+so other devices on the same Wi-Fi can reach it. Deliberately a separate
+entry point rather than a new mode/flag on `app.py` itself: `app.py` stays
+completely untouched, so the desktop pywebview behavior can't regress from
+this change. Prints the machine's LAN IP (found via a no-actual-traffic UDP
+"connect" trick — ask the OS which interface it'd use to reach `8.8.8.8`,
+then read that socket's own address) so the user doesn't have to look it up
+in `ipconfig` themselves. Run via **"Start music_app on WiFi.bat"** (new,
+on the Desktop next to "Build music_app.bat" from the previous session) —
+same pattern as the builder script: calls `.venv\Scripts\python.exe`
+directly rather than relying on venv activation, since that was the exact
+failure mode hit earlier with `pyinstaller`. First run will likely trigger
+a Windows Firewall prompt ("Allow access" for Private networks) — this is
+expected and necessary for the phone to actually reach it.
+
+**PWA / "Add to Home Screen" metadata**, so opening the LAN URL in Safari
+and adding it to the Home Screen behaves like an app (own icon, own name,
+opens full-screen without Safari's address bar) rather than just a
+bookmark:
+- `static/manifest.json` — standard Web App Manifest (`display:
+  "standalone"`, name/short_name, icons). Named `.json` rather than the
+  more "correct" `.webmanifest` specifically to sidestep any server/proxy
+  MIME-type guessing edge cases — `.json` is unambiguous everywhere, and
+  the spec doesn't require the stricter extension. **Worth knowing: iOS
+  Safari mostly ignores this file for "Add to Home Screen" purposes** (that
+  JS API/spec is much better supported on Android Chrome) — it's included
+  for standards-compliance and in case this is ever opened on an Android
+  phone too, but the tags below are what actually drive the iOS behavior.
+- `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`,
+  `apple-mobile-web-app-title` meta tags + `apple-touch-icon` links (180/
+  152/167px variants) in `templates/index.html`'s `<head>` — these are the
+  tags iOS Safari actually reads for Home Screen behavior.
+- `static/icons/` — a generated app icon (dark gradient background in the
+  app's own accent colors, a white `♫` glyph), exported at the sizes the
+  tags above reference (32/152/167/180/192/512px) plus a 1024px master not
+  directly referenced anywhere (kept only as the source if a size is ever
+  added later).
+- `templates/index.html`'s viewport meta gained `viewport-fit=cover` (lets
+  the page draw edge-to-edge under the iPhone notch/status bar area in
+  standalone mode instead of leaving an unstyled white strip).
+
+**One real layout bug fixed while making this usable on an actual phone
+screen** (not strictly PWA-specific, but found because of this work):
+`.tabs` (the 4 top-level tab buttons) had no `flex-wrap`, so on a narrow
+viewport the 4 buttons' long Ukrainian labels either overflowed or got
+squeezed into unreadable vertical slivers instead of wrapping sensibly. New
+`@media (max-width: 700px)` rule makes `.tabs` wrap into a 2×2 grid instead.
+Everything else (control rows, ear-training choices, the piano keyboard,
+progression slots) already had reasonable `flex-wrap`/`min-width`/`clamp()`
+handling from earlier sessions and didn't need changes.
+
+**What this doesn't do, by the explicit choice made up front**: no hosting
+outside the home network (the PC must be on, running the `.bat`, and the
+phone must be on the same Wi-Fi — this was the "Recommended"/chosen option
+over setting up real remote hosting); no offline support/service worker
+(every tab either needs the Flask backend live anyway — voice-leading,
+chord detection — or, for Ear Training specifically, *could* work offline
+since it's pure client-side JS/Web Audio, but a service worker wasn't added
+since the app as a whole isn't meaningfully usable offline regardless); no
+app-icon badges/push notifications (iOS Home Screen web apps support some
+of this but it's well beyond "make it reachable from my phone").
+
+## Backend (`app.py` + `backend/`)
 
 ## Backend (`app.py` + `backend/`)
 
@@ -579,3 +661,14 @@ gaps".
   variety later is just adding array entries, no code change. The chord
   quality/function exercises only ever play root-position triads/7ths in one
   fixed octave — no inversions, no spread voicings, no rhythm variation.
+- **Phone/LAN access** (new 2026-11-03): only reachable on the same Wi-Fi
+  network as this PC, and only while "Start music_app on WiFi.bat" is
+  running — by explicit choice over real remote hosting (see "Running on
+  your phone" above for the reasoning). No offline support (no service
+  worker) even though Ear Training alone could work offline being pure
+  client-side JS. `localStorage`-saved Ear Training progress is also now
+  per-browser: using it from the phone's Safari gives the phone its own
+  separate progress from the desktop `pywebview` window's — they don't
+  sync, same underlying limitation as the single-machine `localStorage`
+  gap noted just above, just now visible across two "browsers" instead of
+  staying hidden on one machine.

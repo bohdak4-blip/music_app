@@ -157,3 +157,12 @@ button.action-btn { border: none; padding: 10px 20px; font-size: 15px; font-weig
 @media (max-width: 600px) {
     .ear-type-btn { min-width: 100%; }
 }
+
+/* Мобільна панель вкладок: .tabs була без flex-wrap, тож на телефоні (напр.
+   iPhone у "Домій"-режимі, вузький viewport) 4 вкладки з довгим українським
+   текстом стискались в один рядок до нечитаних смужок. На вузьких екранах
+   переходимо на сітку 2x2 замість стиснутого одного рядка. */
+@media (max-width: 700px) {
+    .tabs { flex-wrap: wrap; }
+    .tab-btn { flex: 1 1 45%; font-size: 13px; padding: 10px 6px; }
+}
