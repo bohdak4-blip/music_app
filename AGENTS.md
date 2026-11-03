@@ -195,7 +195,7 @@ spec has a comment block marked `ONEFILE` explaining the one-line change
   Flask returns to the tab (or the console, if you turned it on per above)
   will name the missing module/file.
 
-## Running on your phone (LAN web app / "Add to Home Screen")
+## Running on your phone (LAN / Tailscale web app / "Add to Home Screen")
 
 Added 2026-11-03, after the user asked to turn this into "an app" and
 clarified (via two scoped-up-front questions, since a real iOS app and a
@@ -260,10 +260,51 @@ Everything else (control rows, ear-training choices, the piano keyboard,
 progression slots) already had reasonable `flex-wrap`/`min-width`/`clamp()`
 handling from earlier sessions and didn't need changes.
 
-**What this doesn't do, by the explicit choice made up front**: no hosting
-outside the home network (the PC must be on, running the `.bat`, and the
-phone must be on the same Wi-Fi — this was the "Recommended"/chosen option
-over setting up real remote hosting); no offline support/service worker
+**Follow-up, same day: "from anywhere," not just home Wi-Fi.** The user is
+in Kyiv and deals with frequent power outages (hours without grid power is
+routine) but has UPS/power-station backup that keeps the PC and router up
+for days, and separately confirmed their ISP connection itself has its own
+backup power too — so the weak link isn't local uptime, it's whether the
+app is reachable from outside the home network at all. Two options were
+discussed and the choice was deliberate, not default:
+- **A cheap always-on VPS** (Hetzner/DigitalOcean/Contabo, roughly
+  $4-7/mo) — fully decoupled from the user's local power/internet
+  entirely, but costs money and needs real production setup (WSGI server,
+  HTTPS, etc. — not done, since the other option won.
+- **Tailscale** (chosen) — a free personal-use WireGuard-based mesh VPN.
+  Installed on both the PC and the iPhone, signed into the same account;
+  each device gets a stable `100.x.x.x` address reachable from anywhere
+  with internet, no port-forwarding, no exposing the app to the public
+  internet at all (meaningful here specifically because this app has **no
+  login/auth** — directly port-forwarding it would mean anyone who found
+  the IP could use it). Confirmed working: `mypc` at `100.115.86.107`,
+  `iphone-13-pro-max` at `100.76.201.26` (Tailscale admin console
+  screenshot, both green/connected).
+- `serve_lan.py` updated with `get_tailscale_ip()` (calls the real
+  `tailscale ip -4` CLI via `subprocess`, wrapped in a broad
+  `try/except` that silently returns `None` if Tailscale isn't
+  installed/running — this is an optional nicety, not a hard dependency,
+  so a user without Tailscale still gets the plain LAN-only behavior from
+  before). No other code changes needed: the Flask server already binds
+  `0.0.0.0`, which covers Tailscale's virtual network interface
+  automatically — Tailscale only needed to exist and be running for the
+  phone to reach `100.115.86.107:5000` from anywhere, not just at home.
+- **Nothing in this environment could install or configure Tailscale
+  itself** — same structural limit as every GUI/installer/account-signin
+  step in this project's history (PyInstaller builds, `pip install` in
+  earlier sessions): `device_bash` is an isolated Linux sandbox, not a
+  shell on the actual Windows OS, so it can't run `.exe` installers, and
+  account sign-in needs the user's own credentials regardless. Talked the
+  user through the install+sign-in steps in chat; they did it themselves
+  and reported back the connected addresses.
+
+**What this doesn't do, by the explicit choice made up front**: no paid
+hosting outside the home network (the PC must be on, running the `.bat` —
+Tailscale gets around the "same Wi-Fi" requirement, but the PC itself still
+has to be powered on and running the server; this was the chosen option
+over paying for a VPS, given the user's power-station backup makes "PC
+down" rare and Tailscale makes "same Wi-Fi only" a non-issue); no offline
+support/service worker
 (every tab either needs the Flask backend live anyway — voice-leading,
 chord detection — or, for Ear Training specifically, *could* work offline
 since it's pure client-side JS/Web Audio, but a service worker wasn't added
@@ -661,14 +702,20 @@ gaps".
   variety later is just adding array entries, no code change. The chord
   quality/function exercises only ever play root-position triads/7ths in one
   fixed octave — no inversions, no spread voicings, no rhythm variation.
-- **Phone/LAN access** (new 2026-11-03): only reachable on the same Wi-Fi
-  network as this PC, and only while "Start music_app on WiFi.bat" is
-  running — by explicit choice over real remote hosting (see "Running on
-  your phone" above for the reasoning). No offline support (no service
-  worker) even though Ear Training alone could work offline being pure
-  client-side JS. `localStorage`-saved Ear Training progress is also now
-  per-browser: using it from the phone's Safari gives the phone its own
-  separate progress from the desktop `pywebview` window's — they don't
-  sync, same underlying limitation as the single-machine `localStorage`
-  gap noted just above, just now visible across two "browsers" instead of
-  staying hidden on one machine.
+- **Phone/LAN/Tailscale access** (2026-11-03): reachable from the phone
+  only while "Start music_app on WiFi.bat" is running on the PC — Tailscale
+  removes the "same Wi-Fi" restriction (confirmed connected: `mypc` /
+  `iphone-13-pro-max`, both green in the Tailscale admin console) but not
+  the "PC has to be on" one; by explicit choice over paying for a VPS, see
+  "Running on your phone" above. No offline support (no service worker)
+  even though Ear Training alone could work offline being pure client-side
+  JS. `localStorage`-saved Ear Training progress is also now per-browser:
+  using it from the phone's Safari gives the phone its own separate
+  progress from the desktop `pywebview` window's — they don't sync, same
+  underlying limitation as the single-machine `localStorage` gap noted just
+  above, just now visible across two "browsers" instead of staying hidden
+  on one machine. **Tailscale connectivity between the two devices is
+  confirmed; actually opening `http://100.115.86.107:5000` in Safari and
+  using the app over that connection has not yet been confirmed** — that's
+  the next thing to verify, not assume works just because the tailnet
+  itself is up.
