@@ -69,6 +69,16 @@ desktop shell, and plain HTML/CSS/JS (no framework) for the frontend. See
 `AGENTS.md` for the full architecture writeup, and the PyInstaller build
 instructions above for packaging a Windows `.exe`.
 
+## Звукові семпли (Тренування слуху)
+
+Ноти фортепіано у вкладці "Тренування слуху" (`static/audio/piano/`) — це
+записані семпли з FluidR3_GM soundfont, узяті з проєкту
+[gleitz/midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts).
+Самі аудіофайли розповсюджуються за ліцензією
+[Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/)
+(це не те саме, що MIT-ліцензія коду того репозиторію — вона стосується лише
+обгортки/генератора, не самого звуку).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

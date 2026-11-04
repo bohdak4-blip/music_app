@@ -489,10 +489,29 @@ backend now is (`backend/voice_leading.py`+`chord_detection.py` = pure logic,
 `backend/routes.py` = thin adapter) — this is the JS-side version of that
 same split, carried one step further than tabs 1-3 ever needed:
 
-- `static/js/audio-engine.js` — pure Web Audio API wrapper, no music theory,
-  no DOM beyond `window.AudioContext`. `earPcToFrequency(pc, octave)`
-  (pitch-class → Hz, standard A4=440 tuning), `earPlayTone()` (one
-  oscillator + a short attack/decay gain envelope, to avoid clicks),
+- `static/js/audio-engine.js` — Web Audio API wrapper, no music theory, no
+  DOM beyond `window.AudioContext`/`fetch`. Updated 2026-11-03: plays real
+  recorded piano samples instead of synthesized oscillator tones — the
+  original synthesis (`createOscillator()` + a triangle wave) was reported
+  as sounding "horrible, hard to catch" for distinguishing chord qualities
+  by ear. Samples are 24 MP3s (`static/audio/piano/{Note}{Octave}.mp3`, all
+  12 pitch classes × octaves 4 and 5 — the only octaves any exercise
+  actually reaches, see the `earPlayScale` note below) under
+  `static/audio/piano/`, from the FluidR3_GM soundfont via
+  `gleitz/midi-js-soundfonts` (CC BY 3.0 — see attribution in README.md).
+  `earLoadAllSamples()` fetches + `decodeAudioData()`s all 24 once into an
+  in-memory `Map` keyed by `"pc-octave"`, returning a cached promise on
+  repeat calls; a sample that fails to load is just silently skipped later
+  (missing from the Map) rather than throwing and breaking the rest of a
+  chord/sequence. `earPlayTone(pc, octave, startTime, duration)` (note:
+  takes pitch-class + octave directly now, not a frequency — there's no
+  continuous synthesis to feed a frequency into anymore) plays one sample
+  via `AudioBufferSourceNode`, with a short gain envelope: a ~12ms fade-in
+  (samples have their own natural attack, this is only to avoid a click at
+  the very start) and a controlled fade-out to silence exactly at
+  `startTime + duration` (the raw samples are ~3.2s of natural piano decay,
+  much longer than most `duration` values this app uses, so without this
+  the next note/chord would overlap the previous one's tail indefinitely).
   `earPlayChord()` (several tones at once), `earPlaySequence()` (chords
   back-to-back, used for cadences/progressions), and — added 2026-10-30 for
   the "Лад (гама)" exercise — `earPlayScale(root, intervals, options)`
@@ -500,11 +519,20 @@ same split, carried one step further than tabs 1-3 ever needed:
   helpers, it has to track actual octave crossings — `root + interval` can
   exceed 11, which means a genuinely higher pitch, not just a different
   pitch class in the same octave — and appends the tonic an octave up at
-  the end so the run audibly "closes"). A single `AudioContext` is created
-  lazily on first use — not at page load — because browsers refuse to start
-  audio before a user gesture, and the first real call to this module
-  happens from `earInitIfNeeded()`, itself only triggered by the user
-  clicking the "Тренування слуху" tab button.
+  the end so the run audibly "closes"; this is also why octave 5 samples
+  are needed even though every exercise's base `octave` option is 4).
+  A single `AudioContext` is created lazily on first use — not at page
+  load — because browsers refuse to start audio before a user gesture;
+  that same lazy-init call also kicks off `earLoadAllSamples()`, and
+  `earInitIfNeeded()` (in `ear-training.js`) awaits that promise before
+  generating/playing the very first question, so the first note isn't
+  silently dropped by a sample that hasn't finished fetching yet. Only the
+  very first question waits on this — by the time a user switches exercise
+  type or asks for a new question, the samples are long since cached.
+  Adding support for a wider octave range later means downloading more
+  sample files with the same naming pattern, not changing this logic — the
+  `[4, 5]` octave range is a deliberate, hardcoded match to what's actually
+  downloaded, not a general-purpose range.
 - `static/js/ear-training-data.js` — pure vocabulary, no functions beyond
   trivial lookups: `EAR_CHORD_QUALITIES` (9 qualities: maj/min/dim/aug +
   dom7/maj7/m7/dim7/m7b5, each with a Ukrainian label and a hint string),
@@ -714,8 +742,20 @@ gaps".
   progress from the desktop `pywebview` window's — they don't sync, same
   underlying limitation as the single-machine `localStorage` gap noted just
   above, just now visible across two "browsers" instead of staying hidden
-  on one machine. **Tailscale connectivity between the two devices is
-  confirmed; actually opening `http://100.115.86.107:5000` in Safari and
-  using the app over that connection has not yet been confirmed** — that's
-  the next thing to verify, not assume works just because the tailnet
-  itself is up.
+  on one machine. **Update: end-to-end phone usage over Tailscale is now
+  confirmed**, not just tailnet connectivity — opening
+  `http://100.115.86.107:5000` in Safari and actually using Ear Training
+  there is how the "no sound" report (mute-switch issue, not a bug) got
+  reproduced, which only happens if the page genuinely loaded and ran over
+  that connection.
+- **Ear Training audio: real samples, not synthesis** (2026-11-03): see
+  the `audio-engine.js` writeup under "Ear Training" above for the
+  mechanics. Only octaves 4–5 have samples downloaded; a wider octave
+  range or a second instrument timbre would mean downloading more files
+  from `gleitz/midi-js-soundfonts` (same CC BY 3.0 source, see README.md),
+  not a code change. No loading indicator while the 24 samples fetch on
+  first use (`earInitIfNeeded` just awaits `earLoadAllSamples()` before
+  showing/playing the first question) — on a slow connection the Ear
+  Training tab could sit silently for up to roughly a second before the
+  first question appears; not noticeable on a LAN/Tailscale connection in
+  practice, but worth a spinner if it ever is.

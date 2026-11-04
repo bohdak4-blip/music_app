@@ -64,7 +64,11 @@ function earSaveStats() {
 function earInitIfNeeded() {
     if (earInitialized) return;
     earInitialized = true;
-    earNextQuestion();
+    // earLoadAllSamples() сама створює AudioContext (жест користувача -
+    // клік по вкладці - вже стався, тож це дозволено), а потім асинхронно
+    // довантажує фортепіанні семпли; чекаємо на це перед першим питанням,
+    // інакше перша нота могла б зіграти "в тиші", поки семпл ще не прийшов.
+    earLoadAllSamples().then(earNextQuestion);
 }
 
 function earSwitchType(type) {
